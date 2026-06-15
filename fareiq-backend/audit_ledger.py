@@ -35,6 +35,30 @@ def get_trip(trip_id: str) -> dict | None:
     return dict(row) if row else None
 
 
+def get_latest_trip() -> dict | None:
+    with engine.connect() as conn:
+        row = conn.execute(
+            select(audit_log).order_by(audit_log.c.created_at.desc())
+          ).mappings().first()
+    if row:
+        from fare_engine import compute_fare
+        # Reconstruct the full breakdown with base, platform fee, etc.
+        fare = compute_fare(
+            distance_km=row["distance_km"],
+            duration_min=row["duration_min"],
+            vehicle_type=row["vehicle_type"],
+            demand_index=1.0
+        )
+        # Override with exact values recorded in the database
+        fare["trip_id"] = row["trip_id"]
+        fare["total"] = row["total_fare"]
+        fare["driver_net"] = row["driver_net"]
+        fare["fare_hash"] = row["fare_hash"]
+        fare["rate_card_version"] = row["rate_card_version"]
+        return fare
+    return None
+
+
 def trips_today_count() -> int:
     with engine.connect() as conn:
         return conn.execute(select(func.count()).select_from(audit_log)).scalar() or 0

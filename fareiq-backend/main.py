@@ -70,8 +70,18 @@ async def health():
 @app.post("/api/fare", response_model=FareResponse)
 async def get_fare(req: FareRequest):
     fare = compute_fare(req.distance_km, req.duration_min, req.vehicle_type, req.demand_index)
-    record_trip(fare, driver_id=req.driver_id)
+    if req.record:
+        record_trip(fare, driver_id=req.driver_id)
     return fare
+
+
+@app.get("/api/latest-trip", response_model=FareResponse)
+async def get_latest_trip_endpoint():
+    from audit_ledger import get_latest_trip
+    trip = get_latest_trip()
+    if trip is None:
+        raise HTTPException(status_code=404, detail="No recorded trips yet")
+    return trip
 
 
 @app.get("/api/audit/{trip_id}")
@@ -128,7 +138,6 @@ async def ws_live(websocket: WebSocket):
 
 async def _broadcast_fare(params: dict, driver_id: str | None = None) -> None:
     fare = compute_fare(**params)
-    record_trip(fare, driver_id=driver_id)
     message = json.dumps(fare)
     dead = []
     for conn in live_connections:
@@ -146,19 +155,18 @@ async def _broadcast_fare(params: dict, driver_id: str | None = None) -> None:
 async def ws_regulator(websocket: WebSocket):
     await websocket.accept()
     regulator_connections.add(websocket)
+
     try:
         await websocket.send_text(json.dumps(build_snapshot()))
 
         while True:
             raw = await websocket.receive_text()
-            try:
-                payload = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
+            payload = json.loads(raw)
 
             if payload.get("action") == "verify":
                 trip_id = payload.get("trip_id", "")
                 verdict = verify_trip_hash(trip_id)
+
                 await websocket.send_text(json.dumps({
                     "type": "verify_result",
                     "status": verdict["status"],
@@ -166,11 +174,9 @@ async def ws_regulator(websocket: WebSocket):
                 }))
 
     except WebSocketDisconnect:
-        pass
+        print("Regulator disconnected")
     finally:
         regulator_connections.discard(websocket)
-
-
 async def _regulator_broadcast_loop(interval_seconds: int = 10) -> None:
     """Pushes a fresh snapshot to every connected regulator client."""
     while True:

@@ -1,30 +1,62 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:fareiq_app/main.dart';
+import 'package:fareiq/models/fare_model.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('FareBreakdown Model Tests', () {
+    test('should parse valid json correctly', () {
+      final json = {
+        'base': 60.0,
+        'dist_charge': 334.8,
+        'time_charge': 72.0,
+        'fuel_charge': 12.5,
+        'total': 479.3,
+        'band_min': 450.0,
+        'band_max': 520.0,
+        'platform_fee': 15.0,
+        'gst': 22.5,
+        'insurance': 2.0,
+        'driver_net': 400.0,
+        'fare_hash': 'abc123sha256hash',
+        'rate_card_version': 'v1.2',
+      };
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      final fare = FareBreakdown.fromJson(json);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+      expect(fare.base, 60.0);
+      expect(fare.distCharge, 334.8);
+      expect(fare.timeCharge, 72.0);
+      expect(fare.fuelCharge, 12.5);
+      expect(fare.total, 479.3);
+      expect(fare.bandMin, 450.0);
+      expect(fare.bandMax, 520.0);
+      expect(fare.platformFee, 15.0);
+      expect(fare.gst, 22.5);
+      expect(fare.insurance, 2.0);
+      expect(fare.driverNet, 400.0);
+      expect(fare.fareHash, 'abc123sha256hash');
+      expect(fare.rateCardVersion, 'v1.2');
+      expect(fare.withinBand, true);
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    test('should identify fare outside of band', () {
+      final json = {
+        'base': 60.0,
+        'dist_charge': 334.8,
+        'time_charge': 72.0,
+        'fuel_charge': 12.5,
+        'total': 600.0, // outside max
+        'band_min': 450.0,
+        'band_max': 520.0,
+        'platform_fee': 15.0,
+        'gst': 22.5,
+        'insurance': 2.0,
+        'driver_net': 400.0,
+        'fare_hash': 'abc123sha256hash',
+        'rate_card_version': 'v1.2',
+      };
+
+      final fare = FareBreakdown.fromJson(json);
+      expect(fare.withinBand, false);
+    });
   });
 }

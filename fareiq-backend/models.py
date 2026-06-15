@@ -15,6 +15,7 @@ class FareRequest(BaseModel):
     vehicle_type: Literal["auto", "bike", "mini", "sedan"] = "sedan"
     demand_index: float = Field(1.0, ge=0)
     driver_id: Optional[str] = None
+    record: Optional[bool] = False
 
 
 class FareResponse(BaseModel):

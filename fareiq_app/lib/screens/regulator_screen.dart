@@ -4,19 +4,20 @@ import '../providers/fare_provider.dart';
 import 'app_layout.dart';
 import 'dashboard_screen.dart';
 
-class PassengerScreen extends StatelessWidget {
-  const PassengerScreen({super.key});
+class RegulatorScreen extends StatelessWidget {
+  const RegulatorScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<FareProvider>();
+    final r = context.watch<RegulatorProvider>();
 
     return AppLayout(
-      activeTab: 'Passenger View',
+      activeTab: 'Regulator Dashboard',
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 550),
-          child: PassengerCard(provider: p),
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: RegulatorCard(regulatorProvider: r, fareProvider: p),
         ),
       ),
     );
